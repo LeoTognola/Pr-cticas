@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Datos recta
-t = np.arange(10000) / 1000  
+x = np.arange(10000) / 1000  
 m_true = 1.5  
 b_true = 2.0  
 y_true = m_true * t + b_true  
@@ -20,7 +20,7 @@ with pm.Model() as model:
     sigma = pm.HalfNormal('sigma', sigma=1.0)  # Desviación ruido
 
     # Valor esperado de la señal (recta estimada)
-    y_est = m * t + b
+    y_est = m * x + b
 
     # Likelihood: asumiendo ruido gaussiano
     y_obs = pm.Normal('y_obs', mu=y_est, sigma=sigma, observed=observed_signal)
