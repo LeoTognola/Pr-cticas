@@ -20,12 +20,9 @@ def generate_model_signal(mass1, mass2, approximant="SEOBNRv4"):
     hp_np = np.array(hp)  # Convertimos a array de Numpy
     return hp_np / np.max(np.abs(hp_np))  # Normalizamos la señal
 
-# Interpolar señal observada
-def interpolate_signal(model_signal, t, observed_signal):
-    observed_resampled = np.interp(
-        np.linspace(0, len(model_signal) / 4096, len(model_signal)), t, observed_signal
-    )
-    return observed_resampled / np.max(np.abs(observed_resampled))
+# Interpolación de señal
+def interpolate_signal(signal, observed_times, model_times):
+    return np.interp(observed_times, model_times, signal)
 
 # Modelo probabilístico con PyMC
 with pm.Model() as model:
@@ -33,17 +30,23 @@ with pm.Model() as model:
     mass1 = pm.Uniform("mass1", lower=5, upper=50)
     mass2 = pm.Uniform("mass2", lower=5, upper=50)
 
+    # Likelihood personalizada
+    def likelihood_function(mass1, mass2):
+        try:
+            model_signal = generate_model_signal(mass1, mass2)
+            model_times = np.linspace(0, len(model_signal) / 4096, len(model_signal))
+            resampled_signal = interpolate_signal(model_signal, t, model_times)
+            resampled_signal /= np.max(np.abs(resampled_signal))  # Normalización
+            return resampled_signal
+        except Exception as e:
+            print(f"Error al generar la señal: {e}")
+            return np.zeros_like(observed_signal)  # Retorna señal nula en caso de error
+
     # Generar señal modelo
-    model_signal = pm.Deterministic("model_signal", generate_model_signal(mass1, mass2))
+    predicted_signal = likelihood_function(mass1, mass2)
 
-    # Interpolar señal modelo para comparar con observada
-    resampled_model_signal = pm.Deterministic(
-        "resampled_model_signal",
-        interpolate_signal(model_signal, t, observed_signal),
-    )
-
-    # Likelihood (ruido Gaussiano)
-    likelihood = pm.Normal("likelihood", mu=resampled_model_signal, sigma=2, observed=observed_signal)
+    # Likelihood basada en la discrepancia entre señal observada y modelo
+    likelihood = pm.Normal("likelihood", mu=predicted_signal, sigma=2, observed=observed_signal)
 
     # Iniciar el muestreo
     trace = pm.sample(1000, tune=500, chains=2)
@@ -53,4 +56,13 @@ print(pm.summary(trace))
 
 # Graficar resultados
 pm.traceplot(trace)
+plt.show()
+
+import arviz as az
+
+# Resumen de los resultados
+print(pm.summary(trace))
+
+# Graficar resultados con ArviZ
+az.plot_trace(trace)
 plt.show()
