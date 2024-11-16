@@ -1,0 +1,56 @@
+import pymc as pm
+import numpy as np
+import matplotlib.pyplot as plt
+from pycbc.waveform import get_td_waveform
+
+# Simular señal observada (incluye ruido)
+np.random.seed(42)
+t = np.linspace(0, 1, 4096)  # Tiempo en segundos
+hp_rom = 10 * np.sin(2 * np.pi * 100 * t)  # Señal original simulada (onda sinusoidal)
+gaussian_noise = np.random.normal(scale=2, size=t.shape[0])
+observed_signal = hp_rom + gaussian_noise
+
+# Función para generar una señal modelo sin incluir la distancia
+def generate_model_signal(mass1, mass2, approximant="SEOBNRv4"):
+    hp, _ = get_td_waveform(approximant=approximant,
+                            mass1=mass1,
+                            mass2=mass2,
+                            delta_t=1.0/4096,
+                            f_lower=20.0)
+    hp_np = np.array(hp)  # Convertimos a array de Numpy
+    return hp_np / np.max(np.abs(hp_np))  # Normalizamos la señal
+
+# Interpolar señal observada
+def interpolate_signal(model_signal, t, observed_signal):
+    observed_resampled = np.interp(
+        np.linspace(0, len(model_signal) / 4096, len(model_signal)), t, observed_signal
+    )
+    return observed_resampled / np.max(np.abs(observed_resampled))
+
+# Modelo probabilístico con PyMC
+with pm.Model() as model:
+    # Priors para las masas
+    mass1 = pm.Uniform("mass1", lower=5, upper=50)
+    mass2 = pm.Uniform("mass2", lower=5, upper=50)
+
+    # Generar señal modelo
+    model_signal = pm.Deterministic("model_signal", generate_model_signal(mass1, mass2))
+
+    # Interpolar señal modelo para comparar con observada
+    resampled_model_signal = pm.Deterministic(
+        "resampled_model_signal",
+        interpolate_signal(model_signal, t, observed_signal),
+    )
+
+    # Likelihood (ruido Gaussiano)
+    likelihood = pm.Normal("likelihood", mu=resampled_model_signal, sigma=2, observed=observed_signal)
+
+    # Iniciar el muestreo
+    trace = pm.sample(1000, tune=500, chains=2)
+
+# Resumen de los resultados
+print(pm.summary(trace))
+
+# Graficar resultados
+pm.traceplot(trace)
+plt.show()
