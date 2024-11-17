@@ -4,14 +4,14 @@ import matplotlib.pyplot as plt
 import arviz as az
 from pycbc.waveform import get_td_waveform
 
-# Simular señal observada (incluye ruido)
+# Simulación Señal Observada
 np.random.seed(42)
-t = np.linspace(0, 1, 4096)  # Tiempo en segundos
-hp_rom = 10 * np.sin(2 * np.pi * 100 * t)  # Señal original simulada (onda sinusoidal)
+t = np.linspace(0, 1, 4096)
+hp_rom = 10 * np.sin(2 * np.pi * 100 * t)  # Señal original simulada (Señal Base)
 gaussian_noise = np.random.normal(scale=2, size=t.shape[0])
 observed_signal = hp_rom + gaussian_noise
 
-# Función para generar una señal modelo sin incluir la distancia
+# Generar una señal modelo
 def generate_model_signal(mass1, mass2, approximant="SEOBNRv4"):
     hp, _ = get_td_waveform(approximant=approximant,
                             mass1=mass1,
