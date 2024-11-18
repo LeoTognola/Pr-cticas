@@ -1,7 +1,7 @@
 import pymc as pm
 import numpy as np
 import matplotlib.pyplot as plt
-import arviz as az
+import arviz as az (Revisar)
 from pycbc.waveform import get_td_waveform
 
 # Simulación Señal Observada
@@ -31,7 +31,7 @@ with pm.Model() as model:
     mass1 = pm.Uniform("mass1", lower=5, upper=50)
     mass2 = pm.Uniform("mass2", lower=5, upper=50)
 
-    # Likelihood personalizada
+    # Likelihood (Revisar bien)
     def likelihood_function(mass1, mass2):
         try:
             model_signal = generate_model_signal(mass1, mass2)
@@ -52,20 +52,20 @@ with pm.Model() as model:
     # Iniciar el muestreo
     trace = pm.sample(1000, tune=500, chains=2)
 
-# Resumen de los resultados
+# Resultados
 print(pm.summary(trace))
 
-# Extraer valores medios para las masas ajustadas
+# Valores medios de las masas ajustadas
 mass1_mean = trace.posterior['mass1'].mean().values
 mass2_mean = trace.posterior['mass2'].mean().values
 
-# Generar la señal ajustada usando los valores promedio de las masas
+# Señal ajustada usando los valores promedio de las masas
 adjusted_signal = generate_model_signal(mass1_mean, mass2_mean)
 adjusted_times = np.linspace(0, len(adjusted_signal) / 4096, len(adjusted_signal))
 adjusted_signal_resampled = interpolate_signal(adjusted_signal, t, adjusted_times)
 adjusted_signal_resampled /= np.max(np.abs(adjusted_signal_resampled))
 
-# Graficar las señales
+# Graficar señales
 plt.figure(figsize=(12, 10))
 
 # Señal observada
